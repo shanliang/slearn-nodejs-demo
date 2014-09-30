@@ -2,59 +2,12 @@ var formidable = require('formidable'),
     http = require('http'),
     fs = require("fs"),
     url = require('url'),
-    message = '';
-
-http.createServer(function(req, res, body) {
-  console.log('Client request',req.method.toLowerCase(),req.url);
-  //get data
-  var reqfrom = url.parse(req.url, true);
-  if(reqfrom.query.pc == 'alan'){
-    var interval = setInterval(function(){
-      if(message.length){
-        res.writeHead(200, {'content-type': 'text/html'});
-        res.end(message);
-        message = '';
-        clearInterval(interval); 
-      }
-    },10);
-  }
-
-  //send data
-  if (req.url == '/upload' && req.method.toLowerCase() == 'post') {
-    // parse a file upload
-    var form = new formidable.IncomingForm();
-    form.uploadDir = "./tmp";
-    form.parse(req, function(err, fields, files) {
-      console.log(files);
-      for( item in files){
-        var name = files[item].lastModifiedDate.getTime();
-        fs.renameSync(files[item].path, "/tmp/" + name + ".jpg");
-      }
-      
-      if(fields.device ==='iphone'){
-        if((message.length === 0)){
-          message = fields.datas;
-        }
-      }
-      res.end('ok');      
-    });
-   
-  }
-
-  //get data via explorer
-  if(req.url == '/get'){
-    start(res);
-  }
-
-  //show image
-  if(req.url == '/show'){
-    show(res);
-  }
-
-
-}).listen(1337,'192.168.81.59');
-
-console.log('server start!');
+    message = {
+      'havedata': false,
+      'filepath': null,
+      'filename': null,
+      'contype': null
+    };
 
 function show(response) {
   console.log("Request handler 'show' was called.");
@@ -70,6 +23,24 @@ function show(response) {
     }
   });
 }
+
+function sendDataToPc(response,tmpfile,filename,contype) {console.log(tmpfile,filename,contype);
+  console.log("Request handler 'sendDataToPc' was called.");
+  fs.readFile(tmpfile, "binary", function(error, file) {
+    if(error) {
+      response.writeHead(500, {"Content-Type": "text/plain"});
+      response.write(error + "\n");
+      response.end();
+    } else {
+      var fileName = "filename=" + filename;
+      response.writeHead(200, {"Content-Type": contype,"Content-Disposition":fileName});
+      response.write(file, "binary");
+      message.havedata = false;
+      response.end();
+    }
+  });
+}
+
 
 function start(response) {
   console.log("Request handler 'start' was called.");
@@ -91,7 +62,63 @@ function start(response) {
     response.writeHead(200, {"Content-Type": "text/html"});
     response.write(body);
     response.end();
-}
+}    
+
+http.createServer(function(req, res, body) {
+  console.log('Client request',req.method.toLowerCase());
+  //get data
+  var reqfrom = url.parse(req.url, true);
+  if(reqfrom.query.pc == 'alan'){
+    var interval = setInterval(function(){
+      if(message.havedata){
+        sendDataToPc(res,message.filepath,message.filename,message.contype);
+        clearInterval(interval); 
+      }
+    },10);
+  }
+
+  //get data from device and save 
+  if (req.url == '/upload' && req.method.toLowerCase() == 'post') {
+    // parse a file upload
+    var form = new formidable.IncomingForm();
+    form.uploadDir = "./tmp";
+    form.parse(req, function(err, fields, files) {console.log(files);
+      var filePath,fileName,contentTpye;
+
+      for( item in files){
+        filePath = files[item].path;
+        fileName = files[item].name;
+        contentTpye = files[item].type;
+        fs.renameSync(filePath, "/tmp/" + fileName);
+      }
+
+      res.end('ok',function(){
+        message.havedata = true;       
+        message.filepath = "/tmp/" + fileName;
+        message.filename = fileName;
+        message.contype = contentTpye;
+      }); 
+
+    });
+   
+  }
+
+  //get data via explorer
+  if(req.url == '/get'){
+    start(res);
+  }
+
+  //show image
+  if(req.url == '/show'){
+    show(res);
+  }
+
+
+}).listen(1337,'192.168.1.108');
+
+console.log('server start!');
+
+
 
 
 

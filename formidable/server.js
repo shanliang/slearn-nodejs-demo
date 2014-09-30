@@ -2,8 +2,8 @@ var http = require('http'), parse = require('url').parse, util = require('util')
 formidable = require('formidable'),EventEmitterEx = require('events').EventEmitter;
 
 function REQUEST(req, res){
-this.req = req || null;
-this.res = res || null;
+	this.req = req || null;
+	this.res = res || null;
 }
 var reqList = [];
 
@@ -28,7 +28,7 @@ http.createServer(function (req, res) {
 		}
 		if(j != undefined){
 			console.log('Before deletion***********reqList.length: ',reqList.length);
-			delete(reqList[j]);
+			reqList.splice(j,j);
 			console.log('After deletion***********reqList.length: ',reqList.length);
 		}
 		return;
@@ -49,26 +49,27 @@ http.createServer(function (req, res) {
 		var messge = '';
 		var data = '';
 		req.on('data', function (chunk){
-		data += chunk;
+			data += chunk;
 		});
 
 		req.on('end',function(){
-		var obj = JSON.parse(data);
-		console.log( obj.content);
-		messge = obj.content;
-		if(messge.length){
-			// Invoke reply to get request
-			console.log("****Coming****");
-			eventEx.emit('DataComing',req,data);
-		
-		}
-		res.writeHead(200, {'content-type': 'text/plain'});
-		res.write(messge);
-		res.end(); 
-		})
+			var obj = JSON.parse(data);
+			console.log( obj.content);
+			messge = obj.content;
+			if(messge.length){
+				// Invoke reply to get request
+				console.log("****Coming****");
+				eventEx.emit('DataComing',req,data);
+			
+			}
+			res.writeHead(200, {'content-type': 'text/plain'});
+			res.write(messge);
+			res.end(); 
+		});
 	}
 	
 }).listen(8090, '127.0.0.1');
+
 console.log('Server running at http://127.0.0.1:8090/');
 
 
