@@ -2,12 +2,15 @@ var formidable = require('formidable'),
     http = require('http'),
     fs = require("fs"),
     url = require('url'),
-    message = {
-      'havedata': false,
+    catche = [];
+    /*
+    the data in catche looks like
+    {
       'filepath': null,
       'filename': null,
       'contype': null
-    };
+    }
+    */
 
 function show(response) {
   console.log("Request handler 'show' was called.");
@@ -35,7 +38,6 @@ function sendDataToPc(response,tmpfile,filename,contype) {console.log(tmpfile,fi
       var fileName = "filename=" + filename;
       response.writeHead(200, {"Content-Type": contype,"Content-Disposition":fileName});
       response.write(file, "binary");
-      message.havedata = false;
       response.end();
     }
   });
@@ -70,9 +72,11 @@ http.createServer(function(req, res, body) {
   var reqfrom = url.parse(req.url, true);
   if(reqfrom.query.pc == 'alan'){
     var interval = setInterval(function(){
-      if(message.havedata){
+      if(catche.length){
+        var message = catche.shift();
         sendDataToPc(res,message.filepath,message.filename,message.contype);
         clearInterval(interval); 
+        
       }
     },10);
   }
@@ -93,10 +97,13 @@ http.createServer(function(req, res, body) {
       }
 
       res.end('ok',function(){
-        message.havedata = true;       
-        message.filepath = "/tmp/" + fileName;
-        message.filename = fileName;
-        message.contype = contentTpye;
+        var path = "/tmp/" + fileName;
+        var message = {
+          'filepath':path,
+          'filename':fileName,
+          'contype':contentTpye
+        };
+        catche.push(message);
       }); 
 
     });
