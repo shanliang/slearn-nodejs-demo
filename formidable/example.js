@@ -27,20 +27,27 @@ function show(response) {
   });
 }
 
-function sendDataToPc(response,tmpfile,filename,contype) {console.log(tmpfile,filename,contype);
+function sendDataToPc(response) {
   console.log("Request handler 'sendDataToPc' was called.");
-  fs.readFile(tmpfile, "binary", function(error, file) {
-    if(error) {
-      response.writeHead(500, {"Content-Type": "text/plain"});
-      response.write(error + "\n");
-      response.end();
-    } else {
-      var fileName = "filename=" + filename;
-      response.writeHead(200, {"Content-Type": contype,"Content-Disposition":fileName});
-      response.write(file, "binary");
-      response.end();
-    }
-  });
+  var interval = setInterval(function(){
+      if(catche.length){
+        var message = catche.shift();
+        fs.readFile(message.filepath, "binary", function(error, file) {
+          if(error) {
+            response.writeHead(500, {"Content-Type": "text/plain"});
+            response.write(error + "\n");
+            response.end();
+          } else {
+            var fileName = "filename=" + message.filename;
+            response.writeHead(200, {"Content-Type": message.contype,"Content-Disposition":fileName});
+            response.write(file, "binary");
+            response.end();
+          }
+        });
+        clearInterval(interval);
+      }
+    },10);
+  
 }
 
 
@@ -64,29 +71,13 @@ function start(response) {
     response.writeHead(200, {"Content-Type": "text/html"});
     response.write(body);
     response.end();
-}    
+}
 
-http.createServer(function(req, res, body) {
-  console.log('Client request',req.method.toLowerCase());
-  //get data
-  var reqfrom = url.parse(req.url, true);
-  if(reqfrom.query.pc == 'alan'){
-    var interval = setInterval(function(){
-      if(catche.length){
-        var message = catche.shift();
-        sendDataToPc(res,message.filepath,message.filename,message.contype);
-        clearInterval(interval); 
-        
-      }
-    },10);
-  }
-
-  //get data from device and save 
-  if (req.url == '/upload' && req.method.toLowerCase() == 'post') {
-    // parse a file upload
+function getDataFromDevice(request,response){
+  // parse a file upload
     var form = new formidable.IncomingForm();
     form.uploadDir = "./tmp";
-    form.parse(req, function(err, fields, files) {console.log(files);
+    form.parse(request, function(err, fields, files) {console.log(files);
       var filePath,fileName,contentTpye;
 
       for( item in files){
@@ -96,7 +87,7 @@ http.createServer(function(req, res, body) {
         fs.renameSync(filePath, "/tmp/" + fileName);
       }
 
-      res.end('ok',function(){
+      response.end('ok',function(){
         var path = "/tmp/" + fileName;
         var message = {
           'filepath':path,
@@ -107,7 +98,19 @@ http.createServer(function(req, res, body) {
       }); 
 
     });
-   
+}
+
+function onRequest(req,res){
+  console.log('Client request',req.method.toLowerCase());
+  //send data to pc
+  var reqfrom = url.parse(req.url, true);
+  if(reqfrom.query.pc == 'alan'){
+    sendDataToPc(res);
+  }
+
+  //get data from device and save 
+  if (req.url == '/upload' && req.method.toLowerCase() == 'post') {
+    getDataFromDevice(req,res);  
   }
 
   //get data via explorer
@@ -119,9 +122,9 @@ http.createServer(function(req, res, body) {
   if(req.url == '/show'){
     show(res);
   }
+}    
 
-
-}).listen(1337,'192.168.1.108');
+http.createServer(onRequest).listen(1337,'192.168.1.108');
 
 console.log('server start!');
 
