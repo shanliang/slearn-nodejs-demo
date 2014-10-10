@@ -1,5 +1,5 @@
 var http = require('http'), parse = require('url').parse, util = require('util'),
-formidable = require('formidable'),EventEmitterEx = require('events').EventEmitter;
+EventEmitterEx = require('events').EventEmitter;
 
 function REQUEST(req, res){
 	this.req = req || null;
