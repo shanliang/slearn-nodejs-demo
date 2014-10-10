@@ -62,7 +62,7 @@ function sendDataToPc(response) {
   
 }
 
-function getDataFromDevice(request,response){
+function getDataFromDevice(response,request){
   // parse a file upload
     var form = new formidable.IncomingForm();
     form.uploadDir = "./tmp";
